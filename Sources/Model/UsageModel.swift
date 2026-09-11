@@ -320,6 +320,18 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// without a denominator — the same rule the headline ring follows.
     var weeklyFraction: Double? { weeklyWindow?.usedFraction }
 
+    /// Codex can put a weekly allowance in either API slot. The compact
+    /// labels describe periods, so slot names cannot determine C versus T.
+    var currentUsageWindow: LimitWindow? {
+        guard id == "codex" || id.hasPrefix("codex-") else { return headline }
+        return windows.first { $0.duration == 5 * 3600 }
+    }
+
+    var totalUsageWindow: LimitWindow? {
+        guard id == "codex" || id.hasPrefix("codex-") else { return weeklyWindow }
+        return windows.first { $0.duration == 7 * 86400 }
+    }
+
     /// What the cell prints under the ring.
     var headlineText: String {
         if kind == .localRuntime {

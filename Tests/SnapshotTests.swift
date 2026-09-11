@@ -2,6 +2,29 @@ import XCTest
 @testable import Codenotch
 
 final class SnapshotTests: XCTestCase {
+    func testWeeklyOnlyCodexIsTotalRatherThanCurrent() {
+        let weekly = LimitWindow(id: "primary", label: "Weekly limit", usedFraction: 0.14,
+                                 resetsAt: nil, duration: 7 * 86400)
+        let s = ProviderSnapshot(id: "codex", displayName: "Codex", glyph: .openai,
+                                 fidelity: .official, status: .ok, windows: [weekly],
+                                 headlineID: "primary", weeklyID: "secondary")
+        XCTAssertNil(s.currentUsageWindow)
+        XCTAssertEqual(s.totalUsageWindow?.usedFraction, 0.14)
+        XCTAssertEqual(s.usedFraction, 0.14, "The ring still shows the available allowance")
+    }
+
+    func testCodexUsageLabelsFollowDurationRatherThanSlotOrProfile() {
+        let weekly = LimitWindow(id: "primary", label: "Weekly limit", usedFraction: 0.55,
+                                 resetsAt: nil, duration: 7 * 86400)
+        let session = LimitWindow(id: "secondary", label: "5h limit", usedFraction: 0.06,
+                                  resetsAt: nil, duration: 5 * 3600)
+        let s = ProviderSnapshot(id: "codex-work", displayName: "Codex Work", glyph: .openai,
+                                 fidelity: .official, status: .ok, windows: [weekly, session],
+                                 headlineID: "primary", weeklyID: "secondary")
+        XCTAssertEqual(s.currentUsageWindow?.usedFraction, 0.06)
+        XCTAssertEqual(s.totalUsageWindow?.usedFraction, 0.55)
+    }
+
     private func window(_ id: String, _ used: Double) -> LimitWindow {
         LimitWindow(id: id, label: id, usedFraction: used, resetsAt: Date())
     }
