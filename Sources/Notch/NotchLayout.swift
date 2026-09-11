@@ -39,7 +39,7 @@ enum NotchLayout {
     static let cornerRadius = Design.px(78.8)
     static let padTop       = Design.px(69.5)   // body top -> first ring
     static let padBottom    = Design.px(50.1)   // last label -> body bottom
-    static let cellSpacing  = Design.px(83.5)   // label bottom -> next ring top
+    static let cellSpacing  = Design.px(83.5) - percentRowHeight - 2   // label bottom -> next ring top
 
     // The resting pill. Not in the design frame — it is the notch folded away,
     // sized to read as a deliberate handle rather than a sliver of chrome.
@@ -183,7 +183,9 @@ enum NotchLayout {
 
     /// The percent label's line box. Fixed rather than intrinsic so the panel
     /// geometry can be worked out in AppKit before SwiftUI lays anything out.
-    static let percentLineHeight: CGFloat = {
+    static var percentLineHeight: CGFloat { 2 * percentRowHeight + 2 }
+
+    private static let percentRowHeight: CGFloat = {
         let font = NSFont.systemFont(ofSize: Design.fontSize(capPixels: 27), weight: .semibold)
         return ceil(font.ascender - font.descender + font.leading)
     }()

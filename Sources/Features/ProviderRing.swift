@@ -255,6 +255,15 @@ struct ProviderCell: View {
         snapshot.hasReading ? snapshot.headlineText : "—"
     }
 
+    private var showsWeeklyReading: Bool {
+        snapshot.localModel == nil && snapshot.weeklyID != nil
+    }
+
+    private var weeklyText: String {
+        guard snapshot.hasReading, let fraction = snapshot.weeklyFraction else { return "—" }
+        return Percent.text(for: fraction) + "%"
+    }
+
     var body: some View {
         VStack(spacing: NotchLayout.ringLabelGap) {
             ProviderRing(
@@ -269,19 +278,22 @@ struct ProviderCell: View {
                 weeklyFraction: snapshot.hasReading ? snapshot.weeklyFraction : nil,
                 weeklyRing: weeklyRing
             )
-            Text(readingText)
-                .font(Typography.percent)
-                .foregroundStyle(snapshot.showsLocalPerformance && snapshot.localPerformance == nil
-                                 ? Palette.textSecondary : Palette.textPrimary)
-                // Keep local speeds inside the ring's column so longer units
-                // cannot consume the notch's existing side margins.
-                .lineLimit(1)
-                .minimumScaleFactor(snapshot.localModel == nil ? 1 : 0.5)
-                .fixedSize(horizontal: snapshot.localModel == nil, vertical: false)
-                .frame(width: snapshot.localModel == nil ? nil : NotchLayout.ringDiameter,
-                       height: NotchLayout.percentLineHeight)
-                .contentTransition(.numericText())
-                .animation(NotchMotion.reading, value: readingText)
+            VStack(spacing: 2) {
+                Text(showsWeeklyReading ? L10n.t("C: \(readingText)") : readingText)
+                if showsWeeklyReading {
+                    Text(L10n.t("T: \(weeklyText)"))
+                }
+            }
+            .font(Typography.percent.monospacedDigit())
+            .foregroundStyle(snapshot.showsLocalPerformance && snapshot.localPerformance == nil
+                             ? Palette.textSecondary : Palette.textPrimary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(width: NotchLayout.ringDiameter, height: NotchLayout.percentLineHeight,
+                   alignment: .top)
+            .contentTransition(.numericText())
+            .animation(NotchMotion.reading, value: readingText)
+            .animation(NotchMotion.reading, value: weeklyText)
         }
         .frame(height: NotchLayout.cellExtent)
         .accessibilityElement(children: .ignore)
@@ -292,7 +304,9 @@ struct ProviderCell: View {
     var accessibilityText: String {
         snapshot.localModel.map {
             "\($0.brand.map { "\($0.displayName), " } ?? "")\($0.name), \(snapshot.displayName) local, \(snapshot.showsLocalPerformance ? (snapshot.localPerformance.map { "Last generation speed \($0.speedText), \($0.band.label)" } ?? "Speed not measured") : "Loaded"), \($0.detail)\(localActivityText)\(localLedgerText)"
-        } ?? "\(snapshot.displayName), \(readingText)"
+        } ?? (showsWeeklyReading
+              ? "\(snapshot.displayName), \(snapshot.headline?.label ?? L10n.t("Current session")), \(readingText), \(snapshot.weeklyWindow?.label ?? L10n.t("Weekly limit")), \(weeklyText)"
+              : "\(snapshot.displayName), \(readingText)")
     }
 
     /// What the model is doing, the way the tooltip's header says it.
