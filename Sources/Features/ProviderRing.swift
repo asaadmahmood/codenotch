@@ -255,17 +255,17 @@ struct ProviderCell: View {
         snapshot.hasReading ? snapshot.headlineText : "—"
     }
 
-    private var showsWeeklyReading: Bool {
+    private var usesPeriodLabels: Bool {
         snapshot.localModel == nil && snapshot.weeklyID != nil
     }
 
-    private var currentText: String {
-        guard snapshot.hasReading, let fraction = snapshot.currentUsageWindow?.usedFraction else { return "—" }
+    private var currentText: String? {
+        guard snapshot.hasReading, let fraction = snapshot.currentUsageWindow?.usedFraction else { return nil }
         return Percent.text(for: fraction) + "%"
     }
 
-    private var weeklyText: String {
-        guard snapshot.hasReading, let fraction = snapshot.totalUsageWindow?.usedFraction else { return "—" }
+    private var weeklyText: String? {
+        guard snapshot.hasReading, let fraction = snapshot.totalUsageWindow?.usedFraction else { return nil }
         return Percent.text(for: fraction) + "%"
     }
 
@@ -284,9 +284,11 @@ struct ProviderCell: View {
                 weeklyRing: weeklyRing
             )
             VStack(spacing: 2) {
-                Text(showsWeeklyReading ? L10n.t("C: \(currentText)") : readingText)
-                if showsWeeklyReading {
-                    Text(L10n.t("T: \(weeklyText)"))
+                if usesPeriodLabels {
+                    if let currentText { Text(L10n.t("C: \(currentText)")) }
+                    if let weeklyText { Text(L10n.t("W: \(weeklyText)")) }
+                } else {
+                    Text(readingText)
                 }
             }
             .font(Typography.percent.monospacedDigit())
@@ -310,8 +312,11 @@ struct ProviderCell: View {
     var accessibilityText: String {
         snapshot.localModel.map {
             "\($0.brand.map { "\($0.displayName), " } ?? "")\($0.name), \(snapshot.displayName) local, \(snapshot.showsLocalPerformance ? (snapshot.localPerformance.map { "Last generation speed \($0.speedText), \($0.band.label)" } ?? "Speed not measured") : "Loaded"), \($0.detail)\(localActivityText)\(localLedgerText)"
-        } ?? (showsWeeklyReading
-              ? "\(snapshot.displayName), \(snapshot.currentUsageWindow?.label ?? L10n.t("Current session")), \(currentText), \(snapshot.totalUsageWindow?.label ?? L10n.t("Weekly limit")), \(weeklyText)"
+        } ?? (usesPeriodLabels
+              ? ([snapshot.displayName]
+                 + [currentText.map { "\(L10n.t("Current")), \($0)" },
+                    weeklyText.map { "\(L10n.t("Week")), \($0)" }].compactMap { $0 })
+                    .joined(separator: ", ")
               : "\(snapshot.displayName), \(readingText)")
     }
 
