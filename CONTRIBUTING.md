@@ -21,12 +21,10 @@ token rotation, and a new item's partition list admits only Apple's own tools �
 which refuses a properly signed release build as surely as an ad-hoc one.
 
 So `ClaudeCredentials.read` never shows the dialogue from a background refresh:
-interaction is switched off for the read, and a refusal is retried through
-`/usr/bin/security`, which is Apple-signed and on the item's access list. The
-one read that may prompt is the one somebody clicks **Allow access…** for in
-Settings. To stop the refusal happening at all, `Scripts/fix-keychain-partitions.sh`
-adds Codenotch's Team ID to those items' partition lists — once, with your login
-password.
+interaction is switched off for the read. A refusal stays noninteractive;
+spawning `/usr/bin/security` would escape that process-local setting and could
+prompt again. Only clicking **Allow access…** in Settings permits a dialogue.
+Claude's CLI and Desktop cache provide usage without Codenotch reading a secret.
 
 `make release` is different: it archives, signs with a Developer ID
 certificate, notarizes with Apple, and regenerates the Sparkle auto-update

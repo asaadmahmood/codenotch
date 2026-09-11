@@ -24,6 +24,16 @@ final class CodexUsageTests: XCTestCase {
         XCTAssertEqual(result.first?.resetsAt, Date(timeIntervalSince1970: 1_800_001_000))
     }
 
+    func testMalformedPrimaryDoesNotDiscardValidWeeklyUsage() throws {
+        let result = try windows("""
+        {"rate_limit":{
+          "primary_window":{"used_percent":"unavailable"},
+          "secondary_window":{"used_percent":42,"limit_window_seconds":604800,"reset_at":1800600000}}}
+        """)
+        XCTAssertEqual(result.map(\.id), ["secondary"])
+        XCTAssertEqual(result.first?.usedFraction, 0.42)
+    }
+
     /// The reported case: a free-plan account's primary window was 30 days,
     /// not 5 hours or 7 — recorded from a live request. The old parser only
     /// recognised two fixed durations and silently dropped anything else,

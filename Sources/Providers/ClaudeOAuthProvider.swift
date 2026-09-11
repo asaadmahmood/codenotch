@@ -4,17 +4,10 @@ import os
 /// One Claude account's limits, read from whichever source can answer without
 /// interrupting anyone.
 ///
-/// Three sources, in order. Claude Desktop's HTTP cache is read first, because
-/// it is the one that costs nothing and cannot be refused: no subprocess, no
-/// keychain, no network — see `ClaudeDesktopUsageCache`. It answers only while
-/// Desktop is running, and only for the account Desktop is signed into, so where
-/// it is silent `claude "/usage"` is asked next: it reports the same figures off
-/// a credential Claude Code already holds, and needs no keychain access from
-/// this app — which matters because Claude Code files a new keychain item on
-/// every token rotation, so a grant the user gives against the old item is good
-/// for about an hour. Where that fails or Claude Code is not installed, the
-/// usage endpoint is called directly with the OAuth token from the keychain,
-/// exactly as before.
+/// Combines Claude Code's recent `/usage` reading with account-matched Desktop
+/// cache windows omitted by the CLI. If neither can answer, reads the OAuth
+/// endpoint with a noninteractive keychain read. Only an explicit Allow access
+/// action permits a keychain prompt.
 ///
 /// One instance per `ClaudeProfile`: a work login kept under `~/.claude-work`
 /// has its own token, its own limits and its own ring, and this reads exactly
@@ -148,19 +141,15 @@ actor ClaudeOAuthProvider: UsageProvider {
     }
 
     func fetchSnapshot() async throws -> ProviderSnapshot {
-        // Ahead of both the CLI and the back-off check. This is the cheapest
-        // source and the only one that can never interrupt anyone: it reads a
-        // file Claude Desktop has already written.
-        if let windows = await desktopWindows() {
-            return snapshot(windows: windows)
-        }
-        // Ahead of the back-off check on purpose. That deadline is the
-        // endpoint's, and the CLI does not share the endpoint's rate limit —
-        // there is no reason for a 429 on one to darken a ring the other can
-        // still fill.
+        // The CLI provides a recent reading; Desktop can include scoped windows
+        // that the CLI omits (and vice versa). Keep those instead of letting the
+        // first successful source hide Fable or another model's allowance.
+        let desktop = await desktopWindows()
         if let windows = await cliWindows() {
-            return snapshot(windows: windows, plan: lastCLIPlan)
+            return snapshot(windows: Self.merging(windows, supplement: desktop ?? []),
+                            plan: lastCLIPlan)
         }
+        if let desktop { return snapshot(windows: desktop) }
         if Self.shouldHoldOff(until: retryNoEarlierThan, slack: backoffSlack),
            let retryNoEarlierThan {
             let remaining = retryNoEarlierThan.timeIntervalSinceNow
@@ -195,6 +184,18 @@ actor ClaudeOAuthProvider: UsageProvider {
             }
             throw error
         }
+    }
+
+    /// Scoped API windows and CLI windows can have different IDs for the same
+    /// model. Match their labels too, so Fable is shown once, with the CLI's value.
+    nonisolated static func merging(_ primary: [LimitWindow], supplement: [LimitWindow]) -> [LimitWindow] {
+        var result = primary
+        for window in supplement where !result.contains(where: {
+            $0.id == window.id || $0.label.caseInsensitiveCompare(window.label) == .orderedSame
+        }) {
+            result.append(window)
+        }
+        return result.sorted(by: UsageResponse.displayOrder)
     }
 
     /// The snapshot shape every source produces. One place, so a window order or

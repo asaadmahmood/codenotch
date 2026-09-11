@@ -83,12 +83,8 @@ struct AntigravityCredentials {
         var keychainCreds: AntigravityCredentials?
         var keychainStatus: OSStatus = 0
 
-        // Never prompts on a poll. The item is written by Go's keyring through
-        // `/usr/bin/security`, so it is refused the way Claude Code's is, and
-        // this read used to raise the dialogue every time the cache's
-        // five-minute retry came round — for a token Antigravity itself had
-        // long stopped refreshing. A refusal is retried through the security
-        // tool under the item's own account, which is not this user's.
+        // A timer cannot authorize interaction, including through a subprocess.
+        // Only an explicit Allow access action can spend this permission.
         let interactive = prompt.take()
         let (status, data) = readKeychainForTesting?(interactive) ?? KeychainSecret.read(
             query: [
@@ -98,8 +94,7 @@ struct AntigravityCredentials {
                 kSecReturnData: true,
                 kSecMatchLimit: kSecMatchLimitOne
             ],
-            interactive: interactive,
-            rescue: (service: service, account: account)
+            interactive: interactive
         )
         keychainStatus = status
 

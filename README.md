@@ -54,7 +54,7 @@ A Windows port — Rust/Tauri 2, same design and providers — lives in [`window
 
 | Provider | Source | How |
 |---|---|---|
-| **Claude Code** | official | Claude Desktop's own cached usage response, where Desktop is running and signed into the same account. Then Claude Code's own `/usage`, asked of the installed `claude`. Then the OAuth token in the login keychain, against the endpoint that command uses. |
+| **Claude Code** | official | Claude Code's `/usage`, supplemented with account-matched Claude Desktop cache windows, including model limits such as Fable. Falls back to the OAuth usage endpoint with a noninteractive keychain read. |
 | **Cursor** | official | The editor's signed-in session in its local SQLite state, or the `cursor-agent` login in the keychain — no separate sign-in. |
 | **Codex** | official | ChatGPT's usage endpoint, using the local Codex sign-in. Shows the 5-hour and weekly limits when available. |
 | **DeepSeek Platform** | derived from official Platform responses | Explicit sign-in in Codenotch's own WKWebView, then the Platform account summary and API-key/model usage endpoints. Shows funded/spent balance, 30-day tokens/cost, requests and API-key count. |

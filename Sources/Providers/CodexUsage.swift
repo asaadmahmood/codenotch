@@ -148,6 +148,16 @@ enum CodexUsage {
     private struct RateLimit: Decodable {
         let primary_window: Window?
         let secondary_window: Window?
+
+        private enum CodingKeys: String, CodingKey {
+            case primary_window, secondary_window
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            primary_window = try? container.decode(Window.self, forKey: .primary_window)
+            secondary_window = try? container.decode(Window.self, forKey: .secondary_window)
+        }
     }
 
     private struct Window: Decodable {

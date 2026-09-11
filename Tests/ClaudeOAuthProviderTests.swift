@@ -231,21 +231,32 @@ final class ClaudeOAuthProviderTests: XCTestCase {
                        "the endpoint was called even though the cache answered")
     }
 
-    /// Desktop is preferred over the CLI, not merely over the token: it is the
-    /// cheaper of the two and cannot be refused, and on the machine this was
-    /// written for the CLI is the source that lies by omission.
-    func testDesktopIsPreferredOverTheCLI() async throws {
+    func testCLIRefreshesTheReadingEvenWhenDesktopHasACache() async throws {
         let spawns = Counter()
         let provider = makeProvider(source: CredentialSource(readable: true),
                                     cli: Self.cli { spawns.increment(); return Self.cliUsage },
                                     profile: desktopProfile(),
                                     desktopCache: desktopCache(age: 0))
-
         let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.usedFraction, 0.38)
+        XCTAssertEqual(spawns.value, 1)
+    }
 
-        // 30% is Desktop's; 38% would be the CLI's.
-        XCTAssertEqual(snapshot.usedFraction, 0.30)
-        XCTAssertEqual(spawns.value, 0, "a subprocess was spawned even though the cache answered")
+    func testFableReportedByCLIIsNotHiddenByDesktop() async throws {
+        let source = CredentialSource(readable: true)
+        let provider = makeProvider(source: source,
+            cli: Self.cli(answering: Self.cliUsage + "\nCurrent week (Fable): 61% used · resets Sep 14 at 5:59am (Asia/Jakarta)"),
+            profile: desktopProfile(), desktopCache: desktopCache(age: 0))
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.windows.first(where: { $0.label == "Fable" })?.usedFraction, 0.61)
+        XCTAssertEqual(source.reads, 0)
+    }
+
+    func testDesktopOnlyFableIsPreservedAndDuplicateLabelsAreMerged() {
+        let fable = LimitWindow(id: "weekly_scoped", label: "Fable", usedFraction: 0.61, resetsAt: nil)
+        let cliFable = LimitWindow(id: "weekly_fable", label: "Fable", usedFraction: 0.65, resetsAt: nil)
+        XCTAssertEqual(ClaudeOAuthProvider.merging([], supplement: [fable]), [fable])
+        XCTAssertEqual(ClaudeOAuthProvider.merging([cliFable], supplement: [fable]), [cliFable])
     }
 
     /// The honesty requirement. Once Desktop stops updating, its numbers may not

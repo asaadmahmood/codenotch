@@ -51,9 +51,8 @@ struct ClaudeCredentials {
             throw UsageProviderError.needsAuth
         }
 
-        // Never prompts unless a person asked — see `KeychainSecret.read`. A
-        // refusal is retried through `/usr/bin/security` under the account
-        // Claude Code files these items with, which is this user's.
+        // A refused background read stays noninteractive; only Allow access
+        // may authorize a prompt. See `KeychainSecret.read`.
         let (status, item) = KeychainSecret.read(
             query: [
                 kSecClass: kSecClassGenericPassword,
@@ -61,8 +60,7 @@ struct ClaudeCredentials {
                 kSecReturnData: true,
                 kSecMatchLimit: kSecMatchLimitOne
             ],
-            interactive: interactive,
-            rescue: (service: winner.service, account: NSUserName())
+            interactive: interactive
         )
 
         guard status == errSecSuccess, let data = item else {
@@ -93,8 +91,7 @@ struct ClaudeCredentials {
         return try decode(data, services: services)
     }
 
-    /// Turn the stored JSON into a credential. Shared by both readers, so a
-    /// rescued read is judged exactly as a direct one is.
+    /// Turn the stored JSON into a credential.
     private static func decode(_ data: Data, services: [String]) throws -> ClaudeCredentials {
         struct Payload: Decodable {
             struct OAuth: Decodable {

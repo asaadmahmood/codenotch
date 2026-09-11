@@ -5,6 +5,16 @@ import XCTest
 /// new keychain item on every token rotation and a grant against the old one
 /// stops working about an hour later. These pin what its output means.
 final class ClaudeUsageCLITests: XCTestCase {
+    func testDecimalPercentagesIncludeFable() throws {
+        let windows = try ClaudeUsageCLI.parse("""
+        Current session: 0.3% used
+        Current week (Fable): 12.5% used
+        """)
+        XCTAssertEqual(windows.map(\.label), ["Current session", "Fable"])
+        XCTAssertEqual(windows[0].usedFraction ?? -1, 0.003, accuracy: 0.00001)
+        XCTAssertEqual(windows[1].usedFraction, 0.125)
+    }
+
     /// A real answer, trimmed of the prose below the limits. Everything after
     /// the two limit lines is Claude Code describing what drove the usage; it
     /// is approximate by its own admission and carries no limit.

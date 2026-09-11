@@ -245,7 +245,7 @@ struct ClaudeUsageCLI: Sendable {
     /// ignored — it is approximate by its own admission, and none of it is a
     /// limit.
     private static let line = try! NSRegularExpression(
-        pattern: #"^Current (?:(session)|week \(([^)]+)\)):\s*(\d+)%\s*used(?:\s*·\s*resets\s*(.+?))?\s*$"#,
+        pattern: #"^Current (?:(session)|week \(([^)]+)\)):\s*(\d+(?:\.\d+)?)%\s*used(?:\s*·\s*resets\s*(.+?))?\s*$"#,
         options: [.anchorsMatchLines]
     )
 
